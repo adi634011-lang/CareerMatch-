@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CareerMatch – Resume to Job Gap Analyzer</title>
+<style>
+:root{--bg:#f7f6f2;--card:#fff;--ink:#1c1b19;--mut:#6b6a64;--line:#e3e1d8;--acc:#1f6f5c;--accbg:#e1f0ea;--warn:#b4531a;--warnbg:#fbece1;--ok:#1f6f5c;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#151513;--card:#1f1e1b;--ink:#ecebe5;--mut:#a09f97;--line:#34322d;--acc:#5fc4a6;--accbg:#1c3029;--warn:#f0985a;--warnbg:#3a2517;--ok:#5fc4a6}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#151513;--card:#1f1e1b;--ink:#ecebe5;--mut:#a09f97;--line:#34322d;--acc:#5fc4a6;--accbg:#1c3029;--warn:#f0985a;--warnbg:#3a2517;--ok:#5fc4a6}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:980px;margin:0 auto;padding:28px 18px 60px}
+h1{font-size:28px;margin:0 0 4px;letter-spacing:-.01em}
+.sub{color:var(--mut);margin:0 0 22px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:720px){.grid{grid-template-columns:1fr}}
+label{font-weight:600;font-size:14px;display:block;margin-bottom:6px}
+textarea{width:100%;height:230px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:14px/1.5 inherit;resize:vertical}
+.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:14px 0 8px}
+button{font:600 15px inherit;padding:10px 18px;border-radius:9px;border:1px solid var(--acc);background:var(--acc);color:#fff;cursor:pointer}
+button.alt{background:transparent;color:var(--acc)}
+input[type=number]{width:64px;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font:inherit}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:14px}
+h2{font-size:19px;margin:26px 0 4px}
+.score{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.ring{width:96px;height:96px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:24px}
+.ring span{background:var(--card);width:74px;height:74px;border-radius:50%;display:grid;place-items:center}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}
+.chip{padding:3px 11px;border-radius:99px;font-size:13.5px;background:var(--accbg);color:var(--ok)}
+.chip.gap{background:var(--warnbg);color:var(--warn)}
+.step{display:flex;gap:14px}
+.num{flex:none;width:30px;height:30px;border-radius:50%;background:var(--acc);color:#fff;display:grid;place-items:center;font-weight:700;font-size:14px}
+.tag{font-size:12px;padding:1px 8px;border-radius:6px;background:var(--warnbg);color:var(--warn);margin-left:6px;font-weight:600}
+.tag.f{background:var(--accbg);color:var(--ok)}
+.meta{color:var(--mut);font-size:13.5px}
+.step p{margin:4px 0}
+#out{display:none}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.top a{color:var(--acc);text-decoration:none;font-weight:600;font-size:15px}
+.up{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.up input[type=file]{display:none}
+.up label.fb{display:inline-block;margin:0;padding:8px 14px;border:1px dashed var(--acc);border-radius:9px;color:var(--acc);cursor:pointer;font-weight:600;font-size:14px}
+#ocrst{font-size:13.5px;color:var(--mut)}
+#prev{display:none;max-height:140px;max-width:100%;border-radius:8px;border:1px solid var(--line);margin-bottom:8px}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+</head>
+<body>
+<main>
+<div class="top"><h1 style="margin:0">CareerMatch</h1><a href="index.html">← Home</a></div>
+<p class="sub">Paste a resume and a job description. Get your match score, missing competencies, a sequenced learning pathway and portfolio projects. Everything runs in your browser.</p>
+<div class="grid">
+<div><label for="res">Student resume</label>
+<div class="up"><label class="fb" for="photo">📷 Upload resume photo</label><input type="file" id="photo" accept="image/*"><span id="ocrst">JPG, PNG or WEBP · or paste text below</span></div>
+<img id="prev" alt="Uploaded resume preview">
+<textarea id="res" placeholder="Paste resume text, or upload a photo above…"></textarea></div>
+<div><label for="jd">Job description</label><textarea id="jd" placeholder="Paste job description…"></textarea></div>
+</div>
+<div class="bar">
+<button id="go">Analyze match</button>
+<button class="alt" id="demo">Load sample</button>
+<span class="meta">Study hours/week</span><input type="number" id="hrs" value="8" min="2" max="40">
+</div>
+<div id="out">
+<div class="card score"><div class="ring" id="ring"><span id="pct"></span></div><div><strong id="verdict"></strong><div class="meta" id="counts"></div></div></div>
+<h2>Skills you already show</h2><div class="chips" id="have"></div>
+<h2>Missing competencies</h2><div class="chips" id="miss"></div>
+<h2>Personalized learning pathway</h2><div class="meta" id="pathmeta"></div><div id="path"></div>
+<h2>Projects to prove the skills</h2><div id="proj"></div>
+</div>
+</main>
+<script>
+// [id, name, aliases, category, base weeks @8h/wk, prerequisites, how to learn, project idea]
+const S=[
+["python","Python",["python"],"Language",4,[],"Follow a structured beginner course (CS50P or Python for Everybody), then solve 30 practice problems.","Build a command-line expense tracker with file storage and unit tests."],
+["java","Java",["java"],"Language",5,[],"Complete a Java fundamentals course covering OOP, collections and exceptions.","Build a library management system with a layered design and JUnit tests."],
+["js","JavaScript",["javascript","ecmascript","es6"],"Language",4,[],"Work through JavaScript.info or freeCodeCamp, focusing on async code and the DOM.","Build an interactive quiz app that fetches questions from a public API."],
+["ts","TypeScript",["typescript"],"Language",2,["js"],"Read the official TypeScript handbook and convert a small JS project.","Migrate an existing JavaScript project to strict TypeScript."],
+["cpp","C++",["c++","cpp"],"Language",6,[],"Learn modern C++ with a course such as learncpp.com, then practice on algorithm problems.","Implement a text-based game engine using classes and the STL."],
+["sql","SQL",["sql","mysql","postgresql","postgres","sqlite","relational database"],"Data",3,[],"Take an interactive SQL course (joins, aggregation, window functions) and practice on real datasets.","Design a normalized schema for a store and write 15 analytical queries."],
+["nosql","NoSQL / MongoDB",["mongodb","nosql","dynamodb","redis"],"Data",2,["sql"],"Complete the MongoDB University intro course.","Add a MongoDB-backed activity feed to a small web app."],
+["pandas","Pandas & data wrangling",["pandas","data wrangling","data cleaning","data analysis"],"Data",3,["python"],"Follow the pandas user guide and clean three messy public datasets.","Clean and analyze a Kaggle dataset, publishing findings in a notebook."],
+["numpy","NumPy",["numpy","scipy"],"Data",2,["python"],"Work through the NumPy quickstart and vectorize a few loops.","Implement linear regression from scratch using only NumPy."],
+["stats","Statistics",["statistics","statistical","hypothesis testing","regression analysis","a/b test","probability"],"Data",4,[],"Study descriptive stats, distributions, hypothesis tests and regression (Khan Academy or a university MOOC).","Run and write up an A/B test analysis on a sample dataset."],
+["ml","Machine learning",["machine learning","scikit-learn","sklearn","supervised learning","predictive model","xgboost"],"AI/ML",6,["python","stats"],"Take an introductory ML course, then practice with scikit-learn on tabular data.","Build and evaluate a churn or price prediction model with cross-validation."],
+["dl","Deep learning",["deep learning","pytorch","tensorflow","keras","neural network","cnn"],"AI/ML",6,["ml"],"Complete a deep learning course (fast.ai or DeepLearning.AI) using PyTorch.","Train an image classifier and deploy it behind a simple web demo."],
+["nlp","NLP / LLMs",["nlp","natural language processing","llm","large language model","transformers","langchain","rag"],"AI/ML",5,["ml"],"Learn text preprocessing and transformers, then build with a hosted LLM API.","Build a retrieval-augmented question-answering bot over your own documents."],
+["viz","Data visualization / BI",["tableau","power bi","powerbi","data visualization","data visualisation","matplotlib","looker","dashboard"],"Data",3,[],"Learn Tableau Public or Power BI and the principles of clear charts.","Publish an interactive dashboard on a public dataset with a written insight summary."],
+["excel","Excel",["excel","spreadsheet","pivot table","vlookup"],"Data",2,[],"Practice pivot tables, lookups and charts on sample business data.","Create a budgeting model with pivot summaries and scenario toggles."],
+["etl","ETL / data pipelines",["etl","data pipeline","airflow","data engineering","data warehouse","dbt"],"Data",4,["sql","python"],"Learn pipeline concepts and orchestrate a small flow with Airflow or Prefect.","Build a daily pipeline that pulls an API into a warehouse and refreshes a dashboard."],
+["spark","Spark / big data",["spark","pyspark","hadoop","big data","kafka"],"Data",4,["python","sql"],"Complete a PySpark tutorial and process a multi-GB dataset.","Process a large public dataset with PySpark and compare runtimes to pandas."],
+["html","HTML & CSS",["html","css","responsive design","tailwind","bootstrap"],"Web",3,[],"Complete a responsive web design course and rebuild 3 real sites.","Build a responsive personal portfolio website."],
+["react","React",["react","reactjs","react.js","next.js","vue","angular"],"Web",4,["js","html"],"Follow the official React tutorial, then build a multi-page app.","Build a job-tracker app with filters, state management and API integration."],
+["node","Node.js / backend",["node.js","nodejs","node","express","backend development"],"Web",4,["js"],"Learn Node and Express, building REST endpoints with authentication.","Build a REST API with JWT auth, validation and a database."],
+["flask","Flask / Django",["flask","django","fastapi","spring boot"],"Web",4,["python"],"Complete the official Flask or Django tutorial and add auth.","Build a note-sharing web app with user accounts and tests."],
+["rest","REST APIs",["rest","restful","api design","apis","graphql","microservices"],"Web",2,[],"Learn HTTP semantics, status codes, versioning and OpenAPI.","Design and document an API with an OpenAPI spec and a Postman collection."],
+["git","Git & GitHub",["git","github","gitlab","version control"],"Tools",1,[],"Do the Pro Git basics and practice branching and pull requests.","Contribute a documentation fix to an open-source repository."],
+["linux","Linux & shell",["linux","bash","shell scripting","unix","command line"],"Tools",2,[],"Learn the shell, permissions and processes via a hands-on course.","Write bash scripts that automate backups and log rotation on a VM."],
+["docker","Docker",["docker","containers","containerization"],"DevOps",2,["linux"],"Containerize a small app and learn images, volumes and compose.","Dockerize a full-stack app with docker-compose and a README."],
+["k8s","Kubernetes",["kubernetes","k8s","helm"],"DevOps",4,["docker"],"Run a local cluster (kind or minikube) and deploy with manifests.","Deploy a multi-service app to a local cluster with health checks."],
+["cloud","Cloud (AWS/Azure/GCP)",["aws","azure","gcp","google cloud","cloud computing","ec2","s3","lambda"],"DevOps",4,["linux"],"Earn a foundational certification such as AWS Cloud Practitioner and use the free tier.","Host a static site plus serverless API on AWS and document the architecture."],
+["cicd","CI/CD",["ci/cd","cicd","github actions","jenkins","continuous integration","devops"],"DevOps",2,["git"],"Set up GitHub Actions to test and deploy a project.","Add a pipeline with lint, tests and auto-deploy to one of your repos."],
+["testing","Software testing",["unit test","testing","pytest","junit","jest","test-driven","tdd","qa"],"Engineering",2,[],"Learn the testing pyramid and write tests with pytest, JUnit or Jest.","Raise a project to 80% coverage and add an integration test suite."],
+["dsa","Data structures & algorithms",["data structures","algorithms","leetcode","problem solving"],"Engineering",8,[],"Study core structures and solve about 100 problems across topics.","Implement a mini search engine using tries, heaps and graphs."],
+["sysdesign","System design",["system design","scalability","distributed systems","architecture"],"Engineering",4,["rest"],"Read system design primers and diagram 5 real systems.","Write a design doc for a URL shortener covering scale, caching and failure modes."],
+["security","Security basics",["security","cybersecurity","owasp","encryption","authentication"],"Engineering",3,[],"Work through the OWASP Top 10 and secure a sample app.","Audit a small web app for OWASP issues and document fixes."],
+["agile","Agile / Scrum",["agile","scrum","kanban","sprint","jira"],"Process",1,[],"Take a short Scrum fundamentals course and join a team project.","Run a 2-week sprint on a group project with a visible board and retro."],
+["pm","Project management",["project management","stakeholder","roadmap","product management"],"Process",2,[],"Learn planning, prioritization and stakeholder updates.","Plan and ship a small student-club project with a written roadmap."],
+["comm","Communication & teamwork",["communication","teamwork","collaboration","presentation","leadership","cross-functional"],"Soft",2,[],"Practice presenting technical work and write short project summaries.","Give a 10-minute talk on one of your projects and record it."],
+["figma","UI/UX design",["figma","ux","ui design","user research","wireframe","prototyping"],"Design",3,[],"Learn Figma and the basics of user research and usability testing.","Redesign an app screen flow with user feedback from five testers."]
+];
+const byId=Object.fromEntries(S.map(s=>[s[0],s]));
+const esc=a=>a.replace(/[.*+?^${}()|[\]\\\/]/g,"\\$&");
+const rx=S.map(s=>new RegExp("(^|[^a-z0-9+#])("+s[2].map(esc).join("|")+")(?=$|[^a-z0-9+#])","gi"));
+function find(text){const f={};S.forEach((s,i)=>{const m=text.match(rx[i]);if(m)f[s[0]]=m.length});return f}
+function parseJD(t){const req={},pref={};let mode="req";
+t.split(/\n/).forEach(line=>{const l=line.trim();if(!l)return;
+if(l.length<70&&/(preferred|nice to have|bonus|good to have|a plus|desirable)/i.test(l))mode="pref";
+else if(l.length<70&&/(requirements|qualifications|responsibilities|must have|what you|about the role|required)/i.test(l))mode="req";
+const lm=/(preferred|nice to have|bonus|a plus)/i.test(l)&&l.length>=70?"pref":mode;
+const f=find(l);for(const k in f){(lm==="pref"?pref:req)[k]=(lm==="pref"?pref:req)[k]||0;(lm==="pref"?pref:req)[k]+=f[k]}});
+for(const k in req)delete pref[k];return{req,pref}}
+function analyze(){
+const r=document.getElementById("res").value,j=document.getElementById("jd").value,h=Math.max(2,+document.getElementById("hrs").value||8);
+if(r.trim().length<20||j.trim().length<20){alert("Please paste both a resume and a job description.");return}
+const have=find(r),{req,pref}=parseJD(j),wt={};
+for(const k in req)wt[k]=3+Math.min(req[k]-1,2)*.5;for(const k in pref)wt[k]=1;
+const ids=Object.keys(wt);if(!ids.length){alert("No recognizable skills found in the job description. Try a more detailed posting.");return}
+let tot=0,got=0;ids.forEach(k=>{tot+=wt[k];if(have[k])got+=wt[k]});
+const pct=Math.round(got/tot*100),matched=ids.filter(k=>have[k]),missing=ids.filter(k=>!have[k]).sort((a,b)=>wt[b]-wt[a]);
+const col=pct>=70?"var(--ok)":pct>=45?"#c9a227":"var(--warn)";
+const ring=document.getElementById("ring");ring.style.background=`conic-gradient(${col} ${pct*3.6}deg,var(--line) 0)`;
+document.getElementById("pct").textContent=pct+"%";
+document.getElementById("verdict").textContent=pct>=70?"Strong match – polish the gaps and apply":pct>=45?"Promising – a focused plan closes the gap":"Early stage – build foundations first";
+document.getElementById("counts").textContent=`${matched.length} of ${ids.length} job skills found on your resume · ${missing.length} to develop`;
+const chips=(a,c)=>a.length?a.map(k=>`<span class="chip ${c}">${byId[k][1]}${req[k]?"":" (preferred)"}</span>`).join(""):'<span class="meta">None detected.</span>';
+document.getElementById("have").innerHTML=chips(matched,"");
+document.getElementById("miss").innerHTML=chips(missing,"gap");
+// sequence with prerequisites
+const order=[],seen=new Set();
+const addFn=(id,f)=>{if(seen.has(id)||have[id])return;seen.add(id);byId[id][5].forEach(p=>addFn(p,true));order.push([id,f])};
+missing.forEach(k=>addFn(k,false));
+let wk=0,html="";
+order.forEach(([id,f],i)=>{const s=byId[id],w=Math.max(1,Math.round(s[4]*8/h)),a=wk+1,b=wk+w;wk=b;
+const t=f?'<span class="tag f">Foundation</span>':(req[id]?'<span class="tag">Required</span>':'<span class="tag f">Preferred</span>');
+html+=`<div class="card step"><div class="num">${i+1}</div><div><strong>${s[1]}</strong>${t}<div class="meta">${s[3]} · Weeks ${a}${b>a?"–"+b:""}</div><p>${s[6]}</p></div></div>`});
+document.getElementById("path").innerHTML=html||'<div class="card">No gaps to close. Tailor your resume wording to the posting.</div>';
+document.getElementById("pathmeta").textContent=order.length?`About ${wk} weeks at ${h} hours/week, ordered so prerequisites come first.`:"";
+// projects
+const pj=order.filter(o=>!o[1]).slice(0,4).map(([id])=>byId[id]);
+let ph=pj.map(s=>`<div class="card"><strong>${s[1]} project</strong><p>${s[7]}</p></div>`).join("");
+if(pj.length>1){const n=pj.slice(0,3).map(s=>s[1]);ph+=`<div class="card" style="border-color:var(--acc)"><strong>Capstone: one portfolio piece that covers ${n.join(", ")}</strong><p>Combine these into a single end-to-end project with a public repo, a clear README and a short demo. Then add a resume bullet in the form “Built [what] using ${n.join(", ")}, achieving [measurable result].”</p></div>`}
+document.getElementById("proj").innerHTML=ph||'<div class="card">Strengthen existing projects with measurable results.</div>';
+const o=document.getElementById("out");o.style.display="block";o.scrollIntoView({behavior:"smooth"})}
+const fi=document.getElementById("photo"),st=document.getElementById("ocrst"),pv=document.getElementById("prev");
+fi.onchange=async()=>{const f=fi.files[0];if(!f)return;
+if(!f.type.startsWith("image/")){st.textContent="Please choose an image (JPG, PNG or WEBP).";return}
+pv.src=URL.createObjectURL(f);pv.style.display="block";
+if(typeof Tesseract==="undefined"){st.textContent="Text recognition didn’t load. Check your internet connection and reload.";return}
+st.textContent="Starting text recognition…";
+try{const r=await Tesseract.recognize(f,"eng",{logger:m=>{if(m.status==="recognizing text")st.textContent="Reading resume… "+Math.round(m.progress*100)+"%"}});
+const t=r.data.text.trim();document.getElementById("res").value=t;
+st.textContent=t.length<20?"Couldn’t read much text. Try a sharper, well-lit, straight-on photo.":"Done. Review the extracted text, fix any errors, then analyze."}
+catch(e){st.textContent="Could not read that image. Try another photo."}};
+document.getElementById("go").onclick=analyze;
+document.getElementById("demo").onclick=()=>{
+document.getElementById("res").value=`Aarav Singh – B.Tech Computer Science (Final Year)
+Skills: Python, Java, SQL (MySQL), HTML, CSS, Git, GitHub, Excel
+Projects: Student attendance system in Java with MySQL. Built a personal website with HTML and CSS. Analyzed sales data in Excel with pivot tables.
+Experience: Intern, local software firm – wrote Python scripts for data entry automation. Strong teamwork and communication in college fests.`;
+document.getElementById("jd").value=`Junior Data Scientist
+Requirements
+- Proficiency in Python, pandas and SQL
+- Solid understanding of statistics and machine learning (scikit-learn)
+- Experience with data visualization tools such as Tableau or Power BI
+- Strong communication skills
+Nice to have
+- Experience with Docker and AWS
+- Familiarity with deep learning (PyTorch)
+- Knowledge of Spark`};
+</script>
+</body>
+</html>
